@@ -20,6 +20,7 @@ except_file(TEST_CORE_FILES "core/image.c" ${CORE_FILES})
 except_file(TEST_CORE_FILES "core/lang.c" ${TEST_CORE_FILES})
 except_file(TEST_CORE_FILES "core/speed.c" ${TEST_CORE_FILES})
 except_file(TEST_BUILDING_FILES "building/model.c" ${BUILDING_FILES})
+except_file(TEST_RENDERER3D_FILES "software.c" ${RENDERER3D_FILES})
 
 add_executable(translationcheck
     translation/check.c
@@ -63,7 +64,7 @@ add_executable(autopilot
     ${SCENARIO_FILES}
     ${SOUND_FILES}
     ${EDITOR_FILES}
-    ${RENDERER3D_FILES}
+    ${TEST_RENDERER3D_FILES}
 )
 
 file(COPY data/c3.emp DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -457,6 +457,7 @@ set(SCENARIO_FILES
 )
 set(RENDERER3D_FILES
     ${PROJECT_SOURCE_DIR}/src/renderer3d/mode.c
+    ${PROJECT_SOURCE_DIR}/src/renderer3d/software.c
 )
 
 set(GRAPHICS_FILES

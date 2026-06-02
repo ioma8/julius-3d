@@ -27,6 +27,8 @@
 #include "widget/city_with_overlay.h"
 #include "widget/city_without_overlay.h"
 #include "widget/minimap.h"
+#include "renderer3d/mode.h"
+#include "renderer3d/software.h"
 #include "window/building_info.h"
 #include "window/city.h"
 
@@ -48,7 +50,9 @@ void widget_city_draw(void)
 {
     set_city_clip_rectangle();
 
-    if (game_state_overlay()) {
+    if (renderer3d_mode_is_enabled()) {
+        renderer3d_software_draw_viewport();
+    } else if (game_state_overlay()) {
         city_with_overlay_draw(&data.current_tile);
     } else {
         city_without_overlay_draw(0, 0, &data.current_tile);
