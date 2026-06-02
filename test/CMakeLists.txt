@@ -67,6 +67,16 @@ add_executable(autopilot
     ${TEST_RENDERER3D_FILES}
 )
 
+add_executable(renderer3d_pick
+    renderer3d/pick_test.c
+    ${PROJECT_SOURCE_DIR}/src/renderer3d/math.c
+)
+target_include_directories(renderer3d_pick PRIVATE ${PROJECT_SOURCE_DIR}/src)
+if(UNIX AND NOT APPLE)
+    target_link_libraries(renderer3d_pick m)
+endif()
+add_test(NAME renderer3d_pick COMMAND renderer3d_pick)
+
 file(COPY data/c3.emp DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY data/c32.emp DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
