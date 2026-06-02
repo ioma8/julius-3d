@@ -49,6 +49,12 @@ static color_t terrain_color(int terrain)
     return 0xff5f6548;
 }
 
+static color_t building_color(int type)
+{
+    (void) type;
+    return 0xff9b7a4a;
+}
+
 static void project_tile(int tile_x, int tile_y, const renderer3d_camera *camera, int *screen_x, int *screen_y)
 {
     float yaw = camera->yaw_degrees * 0.01745329252f;
@@ -79,5 +85,15 @@ void renderer3d_software_draw_viewport(void)
         int sx = vx + vw / 2 + px;
         int sy = vy + vh / 2 + py;
         fill_rect_clipped(sx, sy, 10, 6, terrain_color(item->terrain));
+    }
+
+    for (int i = 0; i < scene.building_count; i++) {
+        const renderer3d_building_item *item = &scene.buildings[i];
+        int px, py;
+        project_tile(item->x, item->y, camera, &px, &py);
+        int sx = vx + vw / 2 + px;
+        int sy = vy + vh / 2 + py - item->height;
+        fill_rect_clipped(sx, sy, item->size * 12, item->size * 8 + item->height, building_color(item->type));
+        graphics_draw_horizontal_line(sx, sx + item->size * 12, sy, 0xffd0b080);
     }
 }
