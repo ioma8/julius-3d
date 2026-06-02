@@ -23,6 +23,11 @@
 #define DEGREES_TO_RADIANS 0.01745329252f
 #define CAMERA_YAW_BASE_OFFSET 45.0f
 
+#define SKY_GRADIENT_TOP 0x22334b
+#define SKY_GRADIENT_MID 0x304f76
+#define SKY_GRADIENT_BOTTOM 0x10192a
+#define TILE_GRID_COLOR 0x22292e
+
 static const map_tile *selected_tile_for_draw;
 
 static int viewport_x;
@@ -170,12 +175,36 @@ static void draw_filled_quad(point2d p0, point2d p1, point2d p2, point2d p3, col
     }
 }
 
+static color_t blend_colors(color_t a, color_t b, float t)
+{
+    int ar = (a >> 16) & 0xff;
+    int ag = (a >> 8) & 0xff;
+    int ab = a & 0xff;
+    int br = (b >> 16) & 0xff;
+    int bg = (b >> 8) & 0xff;
+    int bb = b & 0xff;
+
+    int r = clamp_int((int) (ar + (br - ar) * t), 0, 255);
+    int g = clamp_int((int) (ag + (bg - ag) * t), 0, 255);
+    int bl = clamp_int((int) (ab + (bb - ab) * t), 0, 255);
+    return (color_t) ((r << 16) | (g << 8) | bl);
+}
+
 static void fill_viewport_background(void)
 {
     int width = 0;
     int height = 0;
     city_view_get_viewport(&viewport_x, &viewport_y, &width, &height);
-    graphics_fill_rect(viewport_x, viewport_y, width, height, 0xff20293a);
+    for (int row = 0; row < height; ++row) {
+        float t = (float) row / (float) (height - 1 > 0 ? height - 1 : 1);
+        color_t row_color;
+        if (t < 0.5f) {
+            row_color = blend_colors(SKY_GRADIENT_TOP, SKY_GRADIENT_MID, t * 2.0f);
+        } else {
+            row_color = blend_colors(SKY_GRADIENT_MID, SKY_GRADIENT_BOTTOM, (t - 0.5f) * 2.0f);
+        }
+        graphics_fill_rect(viewport_x, viewport_y + row, width, 1, row_color);
+    }
 }
 
 static int building_prism_height(const building *b)
@@ -340,6 +369,32 @@ static void draw_building_shadow(int x, int y, int size, int height)
     draw_filled_quad(t0, t1, t2, t3, shade_color(0x131313, -8));
 }
 
+static void draw_ground_grid_lines(int x, int y, int grid_offset)
+{
+    if ((map_grid_offset_to_x(grid_offset) + map_grid_offset_to_y(grid_offset)) & 1) {
+        return;
+    }
+    point2d p0 = transform_point(x, y + TILE_HEIGHT / 2, 0);
+    point2d p1 = transform_point(x + TILE_WIDTH / 2, y, 0);
+    point2d p2 = transform_point(x + TILE_WIDTH, y + TILE_HEIGHT / 2, 0);
+    point2d p3 = transform_point(x + TILE_WIDTH / 2, y + TILE_HEIGHT, 0);
+    draw_line(p0, p1, TILE_GRID_COLOR);
+    draw_line(p1, p2, TILE_GRID_COLOR);
+    draw_line(p2, p3, TILE_GRID_COLOR);
+    draw_line(p3, p0, TILE_GRID_COLOR);
+}
+
+static void draw_building_roof_texture(int x, int y, int grid_offset, int height)
+{
+    int image_id = map_image_at(grid_offset);
+    if (!image_id) {
+        return;
+    }
+    point2d base = transform_point(x, y, 0);
+    point2d raised = transform_point(x, y, height);
+    image_draw_isometric_top_from_draw_tile(image_id, base.x, base.y + (raised.y - base.y), 0);
+}
+
 static void draw_building_roof(point2d top, point2d left, point2d right, point2d bottom, color_t color)
 {
     point2d roof_left = {
@@ -362,7 +417,7 @@ static void draw_building_roof(point2d top, point2d left, point2d right, point2d
     draw_line(roof_left, top, edge);
 }
 
-static void draw_prism(int x, int y, int size, int height, color_t color)
+static void draw_prism(int x, int y, int size, int height, color_t color, int grid_offset)
 {
     int width = TILE_WIDTH * size;
     int tile_height = TILE_HEIGHT * size;
@@ -383,6 +438,7 @@ static void draw_prism(int x, int y, int size, int height, color_t color)
     draw_filled_quad(t_bottom, t_right, t_base_right, t_base_bottom, shade_color(color, -46));
     draw_filled_quad(t_top, t_right, t_bottom, t_left, shade_color(color, 24));
     draw_building_roof(t_top, t_left, t_right, t_bottom, color);
+    draw_building_roof_texture(x, y, grid_offset, height);
 
     color_t edge = shade_color(color, -72);
     draw_line(t_top, t_right, edge);
@@ -412,6 +468,7 @@ static void draw_terrain_footprint(int x, int y, int grid_offset)
     }
     point2d transformed = transform_point(x, y, 0);
     image_draw_isometric_footprint_from_draw_tile(image_id, transformed.x, transformed.y, 0);
+    draw_ground_grid_lines(x, y, grid_offset);
 }
 
 static void draw_building_prism(int x, int y, int grid_offset)
@@ -440,7 +497,7 @@ static void draw_building_prism(int x, int y, int grid_offset)
     if (height > 4) {
         draw_building_shadow(x, y, size, height);
     }
-    draw_prism(x, y, size, height, building_prism_color(b));
+    draw_prism(x, y, size, height, building_prism_color(b), grid_offset);
 }
 
 static void draw_figures(int x, int y, int grid_offset)
