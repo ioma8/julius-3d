@@ -357,15 +357,34 @@ static void draw_building_shadow(int x, int y, int size, int height)
     int width = TILE_WIDTH * size;
     int tile_height = TILE_HEIGHT * size;
     int shadow_y = y + tile_height / 2 + clamp_int(height / 3, 2, 18);
+
+    const renderer3d_camera *camera = renderer3d_camera_get();
+    float light_yaw = (camera->yaw_degrees - CAMERA_YAW_BASE_OFFSET) * DEGREES_TO_RADIANS;
+    int light_dx = (int) round_float_to_int(12.0f * cosf(light_yaw));
+    int light_dy = (int) round_float_to_int(12.0f * sinf(light_yaw));
+    if (light_dx == 0 && light_dy == 0) {
+        light_dx = 1;
+    }
+
+    point2d shadow_ref = transform_point(x, y + tile_height / 2, 0);
+    point2d light_delta = transform_point(x + light_dx, y + tile_height / 2 + light_dy, 0);
+    int dx = light_delta.x - shadow_ref.x;
+    int dy = light_delta.y - shadow_ref.y;
+    int dlen2 = dx * dx + dy * dy;
+    float dlen = (float) (dlen2 > 0 ? sqrtf((float) dlen2) : 1.0f);
+    float shadow_scale = clamp_int(height / 3, 2, 18) / 2.2f;
+    int shadow_shift_x = (int) round_float_to_int(((float) dx) * shadow_scale / dlen);
+    int shadow_shift_y = (int) round_float_to_int(((float) dy) * shadow_scale / dlen);
+
     point2d p0 = {x, shadow_y};
     point2d p1 = {x + width / 2, shadow_y - tile_height / 8};
     point2d p2 = {x + width, shadow_y};
     point2d p3 = {x + width / 2, shadow_y + tile_height / 8};
 
-    point2d t0 = transform_point(p0.x, p0.y, 0);
-    point2d t1 = transform_point(p1.x, p1.y, 0);
-    point2d t2 = transform_point(p2.x, p2.y, 0);
-    point2d t3 = transform_point(p3.x, p3.y, 0);
+    point2d t0 = transform_point(p0.x + shadow_shift_x, p0.y + shadow_shift_y, 0);
+    point2d t1 = transform_point(p1.x + shadow_shift_x, p1.y + shadow_shift_y, 0);
+    point2d t2 = transform_point(p2.x + shadow_shift_x, p2.y + shadow_shift_y, 0);
+    point2d t3 = transform_point(p3.x + shadow_shift_x, p3.y + shadow_shift_y, 0);
     draw_filled_quad(t0, t1, t2, t3, shade_color(0x131313, -8));
 }
 
