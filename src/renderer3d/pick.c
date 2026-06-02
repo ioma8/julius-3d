@@ -21,13 +21,25 @@ static void apply_inverse_view_transform(int screen_x, int screen_y, int *view_x
     int center_y = viewport_y + viewport_height / 2;
     const renderer3d_camera *camera = renderer3d_camera_get();
     float zoom = camera->zoom;
+    float pitch = camera->pitch_degrees * DEGREES_TO_RADIANS;
+    if (pitch < 0.12f) {
+        pitch = 0.12f;
+    }
+    if (pitch > 1.22f) {
+        pitch = 1.22f;
+    }
+    float pitch_cos = cosf(pitch);
+    if (pitch_cos <= 0.0f) {
+        pitch_cos = 0.01f;
+    }
     if (zoom <= 0.0f) {
         zoom = 1.0f;
     }
+
     float dx = (float) screen_x - (float) center_x;
     float dy = (float) screen_y - (float) center_y;
     dx /= zoom;
-    dy /= zoom;
+    dy /= zoom * pitch_cos;
 
     float yaw = (camera->yaw_degrees - CAMERA_YAW_BASE_OFFSET) * DEGREES_TO_RADIANS;
     float sin_yaw = sinf(yaw);
