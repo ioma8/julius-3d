@@ -13,6 +13,7 @@
 #include "map/figure.h"
 #include "map/image.h"
 #include "map/property.h"
+#include "map/terrain.h"
 #include "renderer3d/mode.h"
 #include "widget/city_building_ghost.h"
 #include "widget/city_figure.h"
@@ -388,30 +389,61 @@ static void draw_building_shadow(int x, int y, int size, int height)
     draw_filled_quad(t0, t1, t2, t3, shade_color(0x131313, -8));
 }
 
-static void draw_ground_grid_lines(int x, int y, int grid_offset)
+static color_t ground_tile_color(int grid_offset)
 {
-    if ((map_grid_offset_to_x(grid_offset) + map_grid_offset_to_y(grid_offset)) & 1) {
-        return;
+    int terrain = map_terrain_get(grid_offset);
+
+    if (terrain & TERRAIN_WATER) {
+        return 0x3f5f7e;
     }
-    point2d p0 = transform_point(x, y + TILE_HEIGHT / 2, 0);
-    point2d p1 = transform_point(x + TILE_WIDTH / 2, y, 0);
-    point2d p2 = transform_point(x + TILE_WIDTH, y + TILE_HEIGHT / 2, 0);
-    point2d p3 = transform_point(x + TILE_WIDTH / 2, y + TILE_HEIGHT, 0);
-    draw_line(p0, p1, TILE_GRID_COLOR);
-    draw_line(p1, p2, TILE_GRID_COLOR);
-    draw_line(p2, p3, TILE_GRID_COLOR);
-    draw_line(p3, p0, TILE_GRID_COLOR);
+    if (terrain & TERRAIN_ROAD) {
+        return 0x7d6a54;
+    }
+    if (terrain & TERRAIN_RUBBLE) {
+        return 0x6f665f;
+    }
+    if (terrain & TERRAIN_TREE) {
+        return 0x587246;
+    }
+    if (terrain & TERRAIN_ROCK) {
+        return 0x766d63;
+    }
+    if (terrain & TERRAIN_SHRUB) {
+        return 0x5d734d;
+    }
+    if (terrain & TERRAIN_GARDEN) {
+        return 0x4f6d44;
+    }
+    if (terrain & TERRAIN_MEADOW) {
+        return 0x637c53;
+    }
+    if (terrain & TERRAIN_BUILDING) {
+        return 0x66715d;
+    }
+
+    return 0x60795a;
 }
 
-static void draw_building_roof_texture(int x, int y, int grid_offset, int height)
+static void draw_ground_tile(int x, int y, int grid_offset)
 {
-    int image_id = map_image_at(grid_offset);
-    if (!image_id) {
-        return;
+    point2d top = transform_point(x + TILE_WIDTH / 2, y, 0);
+    point2d right = transform_point(x + TILE_WIDTH, y + TILE_HEIGHT / 2, 0);
+    point2d bottom = transform_point(x + TILE_WIDTH / 2, y + TILE_HEIGHT, 0);
+    point2d left = transform_point(x, y + TILE_HEIGHT / 2, 0);
+    color_t fill = 0x131313;
+    if (grid_offset >= 0) {
+        fill = ground_tile_color(grid_offset);
+        int variation = ((map_grid_offset_to_x(grid_offset) * 13) ^ (map_grid_offset_to_y(grid_offset) * 7)) & 3;
+        fill = shade_color(fill, (variation - 1) * 4);
+        if (map_property_is_constructing(grid_offset)) {
+            fill = shade_color(fill, 8);
+        }
     }
-    point2d base = transform_point(x, y, 0);
-    point2d raised = transform_point(x, y, height);
-    image_draw_isometric_top_from_draw_tile(image_id, base.x, base.y + (raised.y - base.y), 0);
+    draw_filled_quad(left, bottom, right, top, fill);
+    draw_line(top, right, shade_color(fill, 26));
+    draw_line(right, bottom, shade_color(fill, -14));
+    draw_line(bottom, left, shade_color(fill, -22));
+    draw_line(left, top, shade_color(fill, 12));
 }
 
 static void draw_building_roof(point2d top, point2d left, point2d right, point2d bottom, color_t color)
@@ -436,7 +468,7 @@ static void draw_building_roof(point2d top, point2d left, point2d right, point2d
     draw_line(roof_left, top, edge);
 }
 
-static void draw_prism(int x, int y, int size, int height, color_t color, int grid_offset)
+static void draw_prism(int x, int y, int size, int height, color_t color)
 {
     int width = TILE_WIDTH * size;
     int tile_height = TILE_HEIGHT * size;
@@ -457,7 +489,6 @@ static void draw_prism(int x, int y, int size, int height, color_t color, int gr
     draw_filled_quad(t_bottom, t_right, t_base_right, t_base_bottom, shade_color(color, -46));
     draw_filled_quad(t_top, t_right, t_bottom, t_left, shade_color(color, 24));
     draw_building_roof(t_top, t_left, t_right, t_bottom, color);
-    draw_building_roof_texture(x, y, grid_offset, height);
 
     color_t edge = shade_color(color, -72);
     draw_line(t_top, t_right, edge);
@@ -473,21 +504,14 @@ static void draw_terrain_footprint(int x, int y, int grid_offset)
 {
     building_construction_record_view_position(x, y, grid_offset);
     if (grid_offset < 0) {
-        point2d transformed = transform_point(x, y, 0);
-        image_draw_isometric_footprint_from_draw_tile(image_group(GROUP_TERRAIN_BLACK), transformed.x, transformed.y, 0);
+        draw_ground_tile(x, y, grid_offset);
         return;
     }
     if (!map_property_is_draw_tile(grid_offset)) {
         return;
     }
 
-    int image_id = map_image_at(grid_offset);
-    if (map_property_is_constructing(grid_offset)) {
-        image_id = image_group(GROUP_TERRAIN_OVERLAY);
-    }
-    point2d transformed = transform_point(x, y, 0);
-    image_draw_isometric_footprint_from_draw_tile(image_id, transformed.x, transformed.y, 0);
-    draw_ground_grid_lines(x, y, grid_offset);
+    draw_ground_tile(x, y, grid_offset);
 }
 
 static void draw_building_prism(int x, int y, int grid_offset)
@@ -516,7 +540,7 @@ static void draw_building_prism(int x, int y, int grid_offset)
     if (height > 4) {
         draw_building_shadow(x, y, size, height);
     }
-    draw_prism(x, y, size, height, building_prism_color(b), grid_offset);
+    draw_prism(x, y, size, height, building_prism_color(b));
 }
 
 static void draw_figures(int x, int y, int grid_offset)
