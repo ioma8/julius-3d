@@ -3,6 +3,7 @@
 #include "building/building.h"
 #include "building/construction.h"
 #include "city/view.h"
+#include "figure/figure.h"
 #include "map/building.h"
 #include "map/grid.h"
 #include "map/terrain.h"
@@ -45,9 +46,22 @@ void renderer3d_scene_build(renderer3d_scene *scene)
 {
     scene->terrain_count = 0;
     scene->building_count = 0;
+    scene->figure_count = 0;
     active_scene = scene;
     city_view_foreach_valid_map_tile(add_tile);
     active_scene = 0;
+
+    for (int i = 1; i < MAX_FIGURES && scene->figure_count < RENDERER3D_MAX_FIGURE_ITEMS; i++) {
+        const figure *f = figure_get(i);
+        if (!f->id) {
+            continue;
+        }
+        renderer3d_figure_item *item = &scene->figures[scene->figure_count++];
+        item->figure_id = i;
+        item->x = f->x;
+        item->y = f->y;
+        item->type = f->type;
+    }
 
     scene->ghost.active = 0;
     int size_x = 0;

@@ -103,4 +103,11 @@ void renderer3d_software_draw_viewport(void)
         fill_rect_clipped(vx + vw / 2 + px, vy + vh / 2 + py,
             scene.ghost.size_x * 12, scene.ghost.size_y * 8, 0x99ffff00);
     }
+
+    for (int i = 0; i < scene.figure_count; i++) {
+        const renderer3d_figure_item *item = &scene.figures[i];
+        int px, py;
+        project_tile(item->x, item->y, camera, &px, &py);
+        fill_rect_clipped(vx + vw / 2 + px, vy + vh / 2 + py - 12, 4, 12, 0xffe8d8b0);
+    }
 }
