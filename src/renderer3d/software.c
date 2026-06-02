@@ -424,6 +424,78 @@ static color_t ground_tile_color(int grid_offset)
     return 0x60795a;
 }
 
+static void draw_textured_quad(point2d top, point2d right, point2d bottom, point2d left, int image_id)
+{
+    const image *img = image_get(image_id);
+    const color_t *data = image_data(image_id);
+    if (!img || !data || img->width <= 0 || img->height <= 0) {
+        return;
+    }
+
+    point2d u_axis = {right.x - top.x, right.y - top.y};
+    point2d v_axis = {left.x - top.x, left.y - top.y};
+    int det = u_axis.x * v_axis.y - u_axis.y * v_axis.x;
+    if (!det) {
+        return;
+    }
+
+    int min_x = top.x;
+    int max_x = top.x;
+    int min_y = top.y;
+    int max_y = top.y;
+    point2d corners[4] = {top, right, bottom, left};
+    for (int i = 1; i < 4; ++i) {
+        if (corners[i].x < min_x) {
+            min_x = corners[i].x;
+        }
+        if (corners[i].x > max_x) {
+            max_x = corners[i].x;
+        }
+        if (corners[i].y < min_y) {
+            min_y = corners[i].y;
+        }
+        if (corners[i].y > max_y) {
+            max_y = corners[i].y;
+        }
+    }
+
+    const clip_info *clip = graphics_get_clip_info(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1);
+    if (!clip->is_visible) {
+        return;
+    }
+
+    int start_x = min_x + clip->clipped_pixels_left;
+    int end_x = max_x - clip->clipped_pixels_right;
+    int start_y = min_y + clip->clipped_pixels_top;
+    int end_y = max_y - clip->clipped_pixels_bottom;
+
+    float inv_det = 1.0f / (float) det;
+    float du_dx = (float) v_axis.y * inv_det;
+    float dv_dx = (float) -u_axis.y * inv_det;
+    float du_dy = (float) -v_axis.x * inv_det;
+    float dv_dy = (float) u_axis.x * inv_det;
+
+    for (int y = start_y; y <= end_y; ++y) {
+        float local_x = (float) start_x - (float) top.x;
+        float local_y = (float) y - (float) top.y;
+        float u = local_x * du_dx + local_y * du_dy;
+        float v = local_x * dv_dx + local_y * dv_dy;
+        color_t *dst = graphics_get_pixel(start_x, y);
+        for (int x = start_x; x <= end_x; ++x, ++dst) {
+            if (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f) {
+                int src_x = round_float_to_int(u * (float) (img->width - 1));
+                int src_y = round_float_to_int(v * (float) (img->height - 1));
+                color_t color = data[src_y * img->width + src_x];
+                if (color != COLOR_SG2_TRANSPARENT) {
+                    *dst = color;
+                }
+            }
+            u += du_dx;
+            v += dv_dx;
+        }
+    }
+}
+
 static void draw_ground_tile(int x, int y, int grid_offset)
 {
     point2d top = transform_point(x + TILE_WIDTH / 2, y, 0);
@@ -440,6 +512,13 @@ static void draw_ground_tile(int x, int y, int grid_offset)
         }
     }
     draw_filled_quad(left, bottom, right, top, fill);
+    if (grid_offset >= 0) {
+        int image_id = map_image_at(grid_offset);
+        if (map_property_is_constructing(grid_offset)) {
+            image_id = image_group(GROUP_TERRAIN_OVERLAY);
+        }
+        draw_textured_quad(top, right, bottom, left, image_id);
+    }
     draw_line(top, right, shade_color(fill, 26));
     draw_line(right, bottom, shade_color(fill, -14));
     draw_line(bottom, left, shade_color(fill, -22));
