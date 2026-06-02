@@ -96,4 +96,11 @@ void renderer3d_software_draw_viewport(void)
         fill_rect_clipped(sx, sy, item->size * 12, item->size * 8 + item->height, building_color(item->type));
         graphics_draw_horizontal_line(sx, sx + item->size * 12, sy, 0xffd0b080);
     }
+
+    if (scene.ghost.active) {
+        int px, py;
+        project_tile(scene.ghost.x, scene.ghost.y, camera, &px, &py);
+        fill_rect_clipped(vx + vw / 2 + px, vy + vh / 2 + py,
+            scene.ghost.size_x * 12, scene.ghost.size_y * 8, 0x99ffff00);
+    }
 }

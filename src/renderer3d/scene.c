@@ -1,6 +1,7 @@
 #include "renderer3d/scene.h"
 
 #include "building/building.h"
+#include "building/construction.h"
 #include "city/view.h"
 #include "map/building.h"
 #include "map/grid.h"
@@ -47,4 +48,18 @@ void renderer3d_scene_build(renderer3d_scene *scene)
     active_scene = scene;
     city_view_foreach_valid_map_tile(add_tile);
     active_scene = 0;
+
+    scene->ghost.active = 0;
+    int size_x = 0;
+    int size_y = 0;
+    if (building_construction_type() && building_construction_size(&size_x, &size_y)) {
+        scene->ghost.active = 1;
+        scene->ghost.size_x = size_x;
+        scene->ghost.size_y = size_y;
+        int grid_offset = building_construction_get_start_grid_offset();
+        if (grid_offset > 0) {
+            scene->ghost.x = map_grid_offset_to_x(grid_offset);
+            scene->ghost.y = map_grid_offset_to_y(grid_offset);
+        }
+    }
 }
