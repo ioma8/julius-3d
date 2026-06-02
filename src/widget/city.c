@@ -243,12 +243,23 @@ static void build_end(void)
     }
 }
 
+static int input_coords_in_city(int x, int y);
+
 static void scroll_map(const mouse *m)
 {
     pixel_offset delta;
     if (scroll_get_delta(m, &delta, SCROLL_TYPE_CITY)) {
         city_view_scroll(delta.x, delta.y);
         sound_city_decay_views();
+    }
+    if (renderer3d_mode_is_enabled() && input_coords_in_city(m->x, m->y)) {
+        if (m->scrolled == SCROLL_UP) {
+            renderer3d_camera_zoom(0.1f);
+            window_request_refresh();
+        } else if (m->scrolled == SCROLL_DOWN) {
+            renderer3d_camera_zoom(-0.1f);
+            window_request_refresh();
+        }
     }
 }
 

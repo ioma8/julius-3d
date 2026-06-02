@@ -1,5 +1,7 @@
 #include "renderer3d/software.h"
 
+#include <math.h>
+
 #include "city/view.h"
 #include "graphics/color.h"
 #include "graphics/graphics.h"
@@ -47,6 +49,18 @@ static color_t terrain_color(int terrain)
     return 0xff5f6548;
 }
 
+static void project_tile(int tile_x, int tile_y, const renderer3d_camera *camera, int *screen_x, int *screen_y)
+{
+    float yaw = camera->yaw_degrees * 0.01745329252f;
+    float scale = 10.0f * camera->zoom;
+    float cx = (float) tile_x - 32.0f;
+    float cy = (float) tile_y - 32.0f;
+    float rx = cx * cosf(yaw) - cy * sinf(yaw);
+    float ry = cx * sinf(yaw) + cy * cosf(yaw);
+    *screen_x = (int) (rx * scale);
+    *screen_y = (int) (ry * scale * 0.55f);
+}
+
 void renderer3d_software_draw_viewport(void)
 {
     int vx, vy, vw, vh;
@@ -55,28 +69,15 @@ void renderer3d_software_draw_viewport(void)
 
     fill_rect_clipped(vx, vy, vw, vh, 0xff182028);
 
-    int spacing = (int) (24.0f * camera->zoom);
-    if (spacing < 8) {
-        spacing = 8;
-    }
-    int yaw_shift = ((int) camera->yaw_degrees) % spacing;
-
-    for (int y = vy + yaw_shift; y < vy + vh; y += spacing) {
-        graphics_draw_horizontal_line(vx, vx + vw - 1, y, 0xff405060);
-    }
-    for (int x = vx + spacing - yaw_shift; x < vx + vw; x += spacing) {
-        graphics_draw_vertical_line(x, vy, vy + vh - 1, 0xff405060);
-    }
-
-    fill_rect_clipped(vx + 8, vy + 8, 180, 18, 0xff202830);
-
     renderer3d_scene scene;
     renderer3d_scene_build(&scene);
 
     for (int i = 0; i < scene.terrain_count; i++) {
         const renderer3d_terrain_item *item = &scene.terrain[i];
-        int sx = vx + (item->x % 64) * 12;
-        int sy = vy + (item->y % 64) * 8;
+        int px, py;
+        project_tile(item->x, item->y, camera, &px, &py);
+        int sx = vx + vw / 2 + px;
+        int sy = vy + vh / 2 + py;
         fill_rect_clipped(sx, sy, 10, 6, terrain_color(item->terrain));
     }
 }
