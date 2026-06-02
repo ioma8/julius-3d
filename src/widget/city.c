@@ -38,6 +38,9 @@ static struct {
     map_tile selected_tile;
     int new_start_grid_offset;
     int capture_input;
+    int middle_drag_active;
+    int middle_drag_last_x;
+    int middle_drag_last_y;
 } data;
 
 static void set_city_clip_rectangle(void)
@@ -52,7 +55,7 @@ void widget_city_draw(void)
     set_city_clip_rectangle();
 
     if (renderer3d_mode_is_enabled()) {
-        renderer3d_software_draw_viewport();
+        renderer3d_software_draw_viewport(&data.current_tile);
     } else if (game_state_overlay()) {
         city_with_overlay_draw(&data.current_tile);
     } else {
@@ -178,11 +181,7 @@ static int is_cancel_construction_button(int x, int y)
 static void update_city_view_coords(int x, int y, map_tile *tile)
 {
     if (renderer3d_mode_is_enabled()) {
-        if (renderer3d_pick_tile(x, y, tile)) {
-            view_tile view;
-            city_view_grid_offset_to_xy_view(tile->grid_offset, &view.x, &view.y);
-            city_view_set_selected_view_tile(&view);
-        }
+        renderer3d_pick_tile(x, y, tile);
         return;
     }
 
@@ -262,7 +261,7 @@ static void scroll_map(const mouse *m)
         city_view_scroll(delta.x, delta.y);
         sound_city_decay_views();
     }
-    if (renderer3d_mode_is_enabled() && input_coords_in_city(m->x, m->y)) {
+    if (renderer3d_mode_is_enabled() && input_coords_in_city(m->x, m->y) && !m->middle.is_down) {
         if (m->scrolled == SCROLL_UP) {
             renderer3d_camera_zoom(0.1f);
             window_request_refresh();
@@ -490,6 +489,27 @@ static void handle_mouse(const mouse *m)
     map_tile *tile = &data.current_tile;
     update_city_view_coords(m->x, m->y, tile);
     building_construction_reset_draw_as_constructing();
+    if (renderer3d_mode_is_enabled() && m->middle.went_down && input_coords_in_city(m->x, m->y)) {
+        data.middle_drag_active = 1;
+        data.middle_drag_last_x = m->x;
+        data.middle_drag_last_y = m->y;
+    }
+    if (renderer3d_mode_is_enabled() && data.middle_drag_active) {
+        if (m->middle.is_down) {
+            int delta_x = m->x - data.middle_drag_last_x;
+            if (delta_x) {
+                renderer3d_camera_rotate_yaw(-delta_x * 0.5f);
+                window_request_refresh();
+            }
+            data.middle_drag_last_x = m->x;
+            data.middle_drag_last_y = m->y;
+            return;
+        }
+        if (!m->middle.is_down && m->middle.went_up) {
+            data.middle_drag_active = 0;
+            return;
+        }
+    }
     if (m->left.went_down) {
         if (handle_legion_click(tile)) {
             return;

@@ -12,7 +12,6 @@
 #include "figure/formation_legion.h"
 #include "game/orientation.h"
 #include "game/settings.h"
-#include "renderer3d/mode.h"
 #include "game/state.h"
 #include "game/time.h"
 #include "graphics/graphics.h"
@@ -227,19 +226,11 @@ static void handle_hotkeys(const hotkeys *h)
         cycle_legion();
     }
     if (h->rotate_map_left) {
-        if (renderer3d_mode_is_enabled()) {
-            renderer3d_camera_rotate_yaw(-15.0f);
-        } else {
-            game_orientation_rotate_left();
-        }
+        game_orientation_rotate_left();
         window_invalidate();
     }
     if (h->rotate_map_right) {
-        if (renderer3d_mode_is_enabled()) {
-            renderer3d_camera_rotate_yaw(15.0f);
-        } else {
-            game_orientation_rotate_right();
-        }
+        game_orientation_rotate_right();
         window_invalidate();
     }
     if (h->go_to_bookmark) {

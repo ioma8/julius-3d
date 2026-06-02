@@ -15,15 +15,37 @@ int renderer3d_screen_to_tile(
         return 0;
     }
 
-    float yaw = -yaw_degrees * 0.01745329252f;
-    float scale = 10.0f * zoom;
-    float rx = ((float) screen_x - (float) viewport_x - (float) viewport_width / 2.0f) / scale;
-    float ry = ((float) screen_y - (float) viewport_y - (float) viewport_height / 2.0f) / (scale * 0.55f);
+    (void) viewport_width;
+    (void) viewport_height;
+    (void) yaw_degrees;
 
-    float tx = rx * cosf(yaw) - ry * sinf(yaw);
-    float ty = rx * sinf(yaw) + ry * cosf(yaw);
+    int local_x = (int) (((float) (screen_x - viewport_x)) / zoom);
+    int local_y = (int) (((float) (screen_y - viewport_y)) / zoom);
 
-    *tile_x = (int) floorf(tx + 32.0f + 0.5f);
-    *tile_y = (int) floorf(ty + 32.0f + 0.5f);
+    int odd = (local_x / 30 + local_y / 15) & 1;
+    int x_is_odd = (local_x / 30) & 1;
+    int y_is_odd = (local_y / 15) & 1;
+    int x_mod = (local_x % 30) / 2;
+    int y_mod = local_y % 15;
+    int x_view_offset = local_x / 60;
+    int y_view_offset = local_y / 15;
+
+    if (odd) {
+        if (x_mod + y_mod >= 14) {
+            y_view_offset++;
+            if (x_is_odd && !y_is_odd) {
+                x_view_offset++;
+            }
+        }
+    } else {
+        if (y_mod > x_mod) {
+            y_view_offset++;
+        } else if (x_is_odd && y_is_odd) {
+            x_view_offset++;
+        }
+    }
+
+    *tile_x = x_view_offset;
+    *tile_y = y_view_offset;
     return 1;
 }
