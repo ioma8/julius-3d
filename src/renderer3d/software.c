@@ -4,7 +4,9 @@
 #include "graphics/color.h"
 #include "graphics/graphics.h"
 #include "graphics/screen.h"
+#include "map/terrain.h"
 #include "renderer3d/mode.h"
+#include "renderer3d/scene.h"
 
 static void fill_rect_clipped(int x, int y, int width, int height, color_t color)
 {
@@ -26,6 +28,23 @@ static void fill_rect_clipped(int x, int y, int width, int height, color_t color
         return;
     }
     graphics_fill_rect(x, y, width, height, color);
+}
+
+static color_t terrain_color(int terrain)
+{
+    if (terrain & TERRAIN_WATER) {
+        return 0xff2d5f8a;
+    }
+    if (terrain & TERRAIN_ROAD) {
+        return 0xff303030;
+    }
+    if (terrain & TERRAIN_MEADOW) {
+        return 0xff476c3a;
+    }
+    if (terrain & TERRAIN_TREE) {
+        return 0xff315a32;
+    }
+    return 0xff5f6548;
 }
 
 void renderer3d_software_draw_viewport(void)
@@ -50,4 +69,14 @@ void renderer3d_software_draw_viewport(void)
     }
 
     fill_rect_clipped(vx + 8, vy + 8, 180, 18, 0xff202830);
+
+    renderer3d_scene scene;
+    renderer3d_scene_build(&scene);
+
+    for (int i = 0; i < scene.terrain_count; i++) {
+        const renderer3d_terrain_item *item = &scene.terrain[i];
+        int sx = vx + (item->x % 64) * 12;
+        int sy = vy + (item->y % 64) * 8;
+        fill_rect_clipped(sx, sy, 10, 6, terrain_color(item->terrain));
+    }
 }
