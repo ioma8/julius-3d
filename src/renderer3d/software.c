@@ -34,6 +34,8 @@ static int view_center_y;
 static float view_cos = 1.0f;
 static float view_sin = 0.0f;
 static float view_zoom = 1.0f;
+static float view_pitch_cos = 0.573576f;
+static float view_pitch_sin = 0.819152f;
 
 typedef struct {
     int x;
@@ -67,19 +69,31 @@ static void setup_view_transform(void)
     if (view_zoom < 0.35f) {
         view_zoom = 0.35f;
     }
+    float pitch = camera->pitch_degrees * DEGREES_TO_RADIANS;
+    if (pitch < 0.12f) {
+        pitch = 0.12f;
+    }
+    if (pitch > 1.22f) {
+        pitch = 1.22f;
+    }
+    view_pitch_cos = cosf(pitch);
+    view_pitch_sin = sinf(pitch);
     view_center_x = viewport_x + viewport_width / 2;
     view_center_y = viewport_y + viewport_height / 2;
 }
 
-static point2d transform_point(int x, int y)
+static point2d transform_point(int x, int y, int z)
 {
     float dx = (float) x - (float) view_center_x;
     float dy = (float) y - (float) view_center_y;
-    dx *= view_zoom;
-    dy *= view_zoom;
+    float rotated_x = dx * view_cos - dy * view_sin;
+    float rotated_y = dx * view_sin + dy * view_cos;
+    rotated_x *= view_zoom;
+    rotated_y *= view_zoom;
+
     point2d p;
-    p.x = view_center_x + round_float_to_int(dx * view_cos - dy * view_sin);
-    p.y = view_center_y + round_float_to_int(dx * view_sin + dy * view_cos);
+    p.x = view_center_x + round_float_to_int(rotated_x);
+    p.y = view_center_y + round_float_to_int(rotated_y * view_pitch_cos - ((float) z) * view_pitch_sin);
     return p;
 }
 
@@ -319,10 +333,10 @@ static void draw_building_shadow(int x, int y, int size, int height)
     point2d p2 = {x + width, shadow_y};
     point2d p3 = {x + width / 2, shadow_y + tile_height / 8};
 
-    point2d t0 = transform_point(p0.x, p0.y);
-    point2d t1 = transform_point(p1.x, p1.y);
-    point2d t2 = transform_point(p2.x, p2.y);
-    point2d t3 = transform_point(p3.x, p3.y);
+    point2d t0 = transform_point(p0.x, p0.y, 0);
+    point2d t1 = transform_point(p1.x, p1.y, 0);
+    point2d t2 = transform_point(p2.x, p2.y, 0);
+    point2d t3 = transform_point(p3.x, p3.y, 0);
     draw_filled_quad(t0, t1, t2, t3, shade_color(0x131313, -8));
 }
 
@@ -352,21 +366,18 @@ static void draw_prism(int x, int y, int size, int height, color_t color)
 {
     int width = TILE_WIDTH * size;
     int tile_height = TILE_HEIGHT * size;
-    point2d top = {x + width / 2, y - height};
-    point2d right = {x + width, y + tile_height / 2 - height};
-    point2d bottom = {x + width / 2, y + tile_height - height};
-    point2d left = {x, y + tile_height / 2 - height};
-    point2d base_right = {right.x, right.y + height};
-    point2d base_bottom = {bottom.x, bottom.y + height};
-    point2d base_left = {left.x, left.y + height};
+    point2d top0 = {x + width / 2, y};
+    point2d right0 = {x + width, y + tile_height / 2};
+    point2d bottom0 = {x + width / 2, y + tile_height};
+    point2d left0 = {x, y + tile_height / 2};
 
-    point2d t_top = transform_point(top.x, top.y);
-    point2d t_right = transform_point(right.x, right.y);
-    point2d t_bottom = transform_point(bottom.x, bottom.y);
-    point2d t_left = transform_point(left.x, left.y);
-    point2d t_base_right = transform_point(base_right.x, base_right.y);
-    point2d t_base_bottom = transform_point(base_bottom.x, base_bottom.y);
-    point2d t_base_left = transform_point(base_left.x, base_left.y);
+    point2d t_top = transform_point(top0.x, top0.y, height);
+    point2d t_right = transform_point(right0.x, right0.y, height);
+    point2d t_bottom = transform_point(bottom0.x, bottom0.y, height);
+    point2d t_left = transform_point(left0.x, left0.y, height);
+    point2d t_base_right = transform_point(right0.x, right0.y, 0);
+    point2d t_base_bottom = transform_point(bottom0.x, bottom0.y, 0);
+    point2d t_base_left = transform_point(left0.x, left0.y, 0);
 
     draw_filled_quad(t_left, t_bottom, t_base_bottom, t_base_left, shade_color(color, -32));
     draw_filled_quad(t_bottom, t_right, t_base_right, t_base_bottom, shade_color(color, -46));
@@ -387,7 +398,7 @@ static void draw_terrain_footprint(int x, int y, int grid_offset)
 {
     building_construction_record_view_position(x, y, grid_offset);
     if (grid_offset < 0) {
-        point2d transformed = transform_point(x, y);
+        point2d transformed = transform_point(x, y, 0);
         image_draw_isometric_footprint_from_draw_tile(image_group(GROUP_TERRAIN_BLACK), transformed.x, transformed.y, 0);
         return;
     }
@@ -399,7 +410,7 @@ static void draw_terrain_footprint(int x, int y, int grid_offset)
     if (map_property_is_constructing(grid_offset)) {
         image_id = image_group(GROUP_TERRAIN_OVERLAY);
     }
-    point2d transformed = transform_point(x, y);
+    point2d transformed = transform_point(x, y, 0);
     image_draw_isometric_footprint_from_draw_tile(image_id, transformed.x, transformed.y, 0);
 }
 
@@ -438,7 +449,7 @@ static void draw_figures(int x, int y, int grid_offset)
     while (figure_id) {
         figure *f = figure_get(figure_id);
         if (!f->is_ghost) {
-            point2d transformed = transform_point(x, y);
+            point2d transformed = transform_point(x, y, 0);
             city_draw_figure(f, transformed.x, transformed.y, 0);
         }
         figure_id = f->next_figure_id_on_same_tile;
