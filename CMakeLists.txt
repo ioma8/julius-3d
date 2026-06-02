@@ -455,6 +455,10 @@ set(SCENARIO_FILES
     ${PROJECT_SOURCE_DIR}/src/scenario/request.c
     ${PROJECT_SOURCE_DIR}/src/scenario/scenario.c
 )
+set(RENDERER3D_FILES
+    ${PROJECT_SOURCE_DIR}/src/renderer3d/mode.c
+)
+
 set(GRAPHICS_FILES
     ${PROJECT_SOURCE_DIR}/src/graphics/arrow_button.c
     ${PROJECT_SOURCE_DIR}/src/graphics/button.c
@@ -647,6 +651,7 @@ set(SOURCE_FILES
     ${MAP_FILES}
     ${SCENARIO_FILES}
     ${GRAPHICS_FILES}
+    ${RENDERER3D_FILES}
     ${SOUND_FILES}
     ${WIDGET_FILES}
     ${WINDOW_FILES}

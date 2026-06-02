@@ -13,6 +13,7 @@
 #include "figure/type.h"
 #include "game/animation.h"
 #include "game/file.h"
+#include "renderer3d/mode.h"
 #include "game/file_editor.h"
 #include "game/settings.h"
 #include "game/speed.h"
@@ -49,6 +50,7 @@ int game_pre_init(void)
 {
     settings_load();
     config_load();
+    renderer3d_mode_init();
     hotkey_config_load();
     scenario_settings_init();
     game_state_unpause();

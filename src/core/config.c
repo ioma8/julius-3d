@@ -29,6 +29,7 @@ static const char *ini_keys[] = {
     "ui_highlight_legions",
     "ui_show_military_sidebar",
     "ui_show_speedrun_info",
+    "ui_3d_view",
 };
 
 static const char *ini_string_keys[] = {
