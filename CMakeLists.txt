@@ -458,6 +458,7 @@ set(SCENARIO_FILES
 set(RENDERER3D_FILES
     ${PROJECT_SOURCE_DIR}/src/renderer3d/math.c
     ${PROJECT_SOURCE_DIR}/src/renderer3d/mode.c
+    ${PROJECT_SOURCE_DIR}/src/renderer3d/pick.c
     ${PROJECT_SOURCE_DIR}/src/renderer3d/scene.c
     ${PROJECT_SOURCE_DIR}/src/renderer3d/software.c
 )

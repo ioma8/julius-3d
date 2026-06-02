@@ -28,6 +28,7 @@
 #include "widget/city_without_overlay.h"
 #include "widget/minimap.h"
 #include "renderer3d/mode.h"
+#include "renderer3d/pick.h"
 #include "renderer3d/software.h"
 #include "window/building_info.h"
 #include "window/city.h"
@@ -176,6 +177,15 @@ static int is_cancel_construction_button(int x, int y)
 
 static void update_city_view_coords(int x, int y, map_tile *tile)
 {
+    if (renderer3d_mode_is_enabled()) {
+        if (renderer3d_pick_tile(x, y, tile)) {
+            view_tile view;
+            city_view_grid_offset_to_xy_view(tile->grid_offset, &view.x, &view.y);
+            city_view_set_selected_view_tile(&view);
+        }
+        return;
+    }
+
     view_tile view;
     if (city_view_pixels_to_view_tile(x, y, &view)) {
         tile->grid_offset = city_view_tile_to_grid_offset(&view);
